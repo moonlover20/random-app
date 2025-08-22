@@ -3,233 +3,186 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>동물달리기 – 커피내기 (트랙 이동형)</title>
+  <title>동물달리기 – 커피내기 (미니멀 + 사운드)</title>
   <style>
     :root{
-      --bg:#0b1020; --panel:#111735; --ink:#eaf2ff; --muted:#9fb2d9; --brand:#5aa1ff; --accent:#8bffb0;
+      --bg:#0e1218; --ink:#eaf2ff; --muted:#9fb2d9; --edge:#2b323d; --lane:#141a22;
+      --glow: 0 0 25px rgba(255,255,255,.25), 0 0 50px rgba(255,255,255,.07);
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Pretendard,Apple SD Gothic Neo,Malgun Gothic,sans-serif;background:radial-gradient(1200px 600px at 10% -10%, #1a2455, transparent),radial-gradient(1000px 500px at 110% -20%, #123, transparent),var(--bg);color:var(--ink)}
-    .wrap{max-width:1100px;margin:24px auto;padding:16px}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
-    h1{font-size:20px;margin:0;letter-spacing:.3px}
-    .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-    .btn{background:#1a275e;color:#fff;border:1px solid #26408b;padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:700}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .select{appearance:none;background:#1a275e;color:#fff;border:1px solid #26408b;padding:10px 12px;border-radius:12px}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Pretendard,Apple SD Gothic Neo,Malgun Gothic,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
 
-    .track{background:linear-gradient(180deg, #10162f, #0d1430);border:1px solid #2a3a7a;border-radius:16px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-    .lanes{display:grid;gap:10px}
-    .lane{background:#0f1636;border:1px solid #22306b;border-radius:14px;padding:10px;position:relative}
-    .runway{position:relative;height:64px;border-radius:12px;background:repeating-linear-gradient(90deg,#121b46 0 14px,#0f173f 14px 28px);border:1px solid #23306a;overflow:hidden}
-    .runner{position:absolute;top:6px;left:0;width:52px;height:52px;border-radius:50%;background:#0d1230;border:2px solid #2c3f88;display:grid;place-items:center;font-size:28px;user-select:none;overflow:hidden;transition:filter .2s}
+    /* STAGE */
+    .stage{position:relative;width:100vw;height:100vh}
+
+    /* HUD */
+    .hud{position:absolute;left:0;right:0;display:flex;justify-content:center;gap:16px;pointer-events:auto;user-select:none}
+    .hud.top{top:18px}
+    .hud.bottom{bottom:18px}
+    .chip{display:flex;align-items:center;gap:14px;background:#151b24;border:1px solid var(--edge);border-radius:14px;padding:8px 14px;font-weight:700;opacity:.9}
+    .chip b{font-size:14px;letter-spacing:.5px;opacity:.7}
+    .chip .val{min-width:56px;text-align:center;font-feature-settings:"tnum" 1;}
+    .btn{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:1px solid var(--edge);background:#0f141b;cursor:pointer;font-weight:900}
+
+    /* START button */
+    .start{position:absolute;inset:0;display:grid;place-items:center;pointer-events:auto}
+    .start button{font-size:44px;letter-spacing:2px;border:1px solid var(--edge);background:rgba(255,255,255,.02);color:#fff;border-radius:18px;padding:18px 40px;cursor:pointer;box-shadow:var(--glow)}
+    .start button:disabled{opacity:.5;cursor:not-allowed}
+
+    /* LEFT STACK (runners) */
+    .stack{position:absolute;left:5vw;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:22px;align-items:flex-start}
+    .lane{position:relative;width:90vw;height:72px;background:linear-gradient(90deg, #121820, #0f141b);border:1px solid var(--edge);border-radius:16px}
+    .runner{position:absolute;left:10px;top:50%;transform:translate(0,-50%);width:60px;height:60px;border-radius:50%;display:grid;place-items:center;font-size:34px;background:#0f141b;border:1px solid var(--edge);overflow:hidden;transition:filter .2s}
     .runner img{width:100%;height:100%;object-fit:cover}
-    .name{position:absolute;top:6px;left:58px;color:#bcd1ff;font-size:12px;opacity:.9;user-select:none}
-    .flag{position:absolute;right:4px;top:6px;background:#1c2c64;border:1px solid #3550b9;color:#e7f0ff;font-size:11px;padding:5px 8px;border-radius:8px;z-index:1}
+    .place{position:absolute;left:-10px;top:-10px;width:26px;height:26px;border-radius:999px;background:#ffd166;color:#1a1a1a;border:2px solid #e0a300;display:grid;place-items:center;font-weight:900;font-size:12px}
+    .flag{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:18px;opacity:.6}
 
-    .place{position:absolute;top:-10px;left:-10px;background:#ffd166;color:#1a1a1a;border:2px solid #e0a300;border-radius:999px;width:26px;height:26px;display:grid;place-items:center;font-weight:800;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.35);}
-
-    footer{margin-top:14px;color:var(--muted);font-size:13px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:10px}
-    .card{background:#0f1738;border:1px solid #23306a;border-radius:12px;padding:10px}
-    .hint{color:#bcd1ff;font-size:12px}
-    .toast{position:fixed;inset:auto 12px 12px auto;background:#1a275f;border:1px solid #2e4bb5;color:#fff;padding:12px 14px;border-radius:12px;font-weight:700;box-shadow:0 8px 30px rgba(0,0,0,.4);display:none}
-
-    .board{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
-    .board li{background:#122062;border:1px solid #2946a8;border-radius:10px;padding:6px 10px;font-size:12px}
+    .hint{position:absolute;left:18px;bottom:18px;color:var(--muted);font-size:12px;opacity:.8}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>🐾 동물달리기 – 커피내기 (트랙 이동형)</h1>
-      <div class="controls">
-        <label>인원
-          <select id="count" class="select" aria-label="참가자 수">
-            <option>2</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option>
-          </select>
-        </label>
-        <button id="start" class="btn">🏁 시작</button>
-        <button id="reset" class="btn" disabled>🔄 리셋</button>
-        <button id="shuffle" class="btn">🔀 이모지 섞기</button>
+  <div class="stage">
+    <!-- HUD (Top: duration) -->
+    <div class="hud top">
+      <div class="chip">
+        <b>시간</b>
+        <div id="tMinus" class="btn">−</div>
+        <div id="tVal" class="val">10s</div>
+        <div id="tPlus" class="btn">＋</div>
       </div>
-    </header>
+    </div>
 
-    <section class="track">
-      <div id="lanes" class="lanes"></div>
-    </section>
-
-    <footer>
-      <div class="grid">
-        <div class="card">
-          <strong>사용법</strong>
-          <div class="hint">아바타(원형)를 클릭해 사진을 넣고, <b>달리는 말풍선</b>처럼 캐릭터가 오른쪽 결승선까지 직접 이동합니다. 모든 주자가 골인할 때까지 진행돼요.</div>
-        </div>
-        <div class="card">
-          <strong>현재 순위</strong>
-          <ul id="board" class="board"></ul>
-        </div>
+    <!-- HUD (Bottom: players) -->
+    <div class="hud bottom">
+      <div class="chip">
+        <b>인원</b>
+        <div id="pMinus" class="btn">−</div>
+        <div id="pVal" class="val">5p</div>
+        <div id="pPlus" class="btn">＋</div>
       </div>
-    </footer>
+    </div>
+
+    <!-- START overlay -->
+    <div class="start"><button id="startBtn">Start</button></div>
+
+    <!-- Runners stack -->
+    <div id="stack" class="stack"></div>
+
+    <div class="hint">아바타 클릭으로 사진 변경 · 모든 주자가 결승선에 도달할 때까지 진행</div>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <!-- 🔊 사운드 리소스 (같은 폴더에 start.mp3, finish.mp3 두거나 CDN 사용) -->
+  <audio id="sndStart" src="start.mp3" preload="auto"></audio>
+  <audio id="sndFinish" src="finish.mp3" preload="auto"></audio>
+
   <input id="file" type="file" accept="image/*" hidden />
 
   <script>
-  // ------- 설정 -------
-  const DEFAULT_EMOJIS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵'];
+  // ===== State =====
+  const EMOJIS = ['🐢','🐰','🐷','🐯','🦎','🐶','🦊','🐼','🐨'];
+  let players = 5;            // 2..9
+  let totalSec = 10;          // 6..20
+  let racers = [];            // {id, emoji, x(0..1), avatarSrc, finishedAt, place}
+  const durations = new Map();// ms per racer
+  let running = false; let raf; let startTime; let nextPlace = 1; let activeIdx = null;
 
-  // ------- 상태 -------
-  let racers = []; // { id, emoji, name, x(0..1), avatarSrc, finishedAt, place }
-  let running = false;
-  let raf;
-  let startTime;
-  const durations = new Map(); // 예상 완주시간(ms)
-  const distances = new Map(); // 트랙 픽셀 길이(러너가 이동 가능한 실제 거리)
-  const DOM = { lanes: null, count: null, start: null, reset: null, shuffle: null, file: null, toast: null, board: null };
-  let activeAvatarIdx = null;
+  // ===== DOM =====
+  const $stack = document.getElementById('stack');
+  const $start = document.getElementById('startBtn');
+  const $tMinus = document.getElementById('tMinus');
+  const $tPlus = document.getElementById('tPlus');
+  const $tVal = document.getElementById('tVal');
+  const $pMinus = document.getElementById('pMinus');
+  const $pPlus = document.getElementById('pPlus');
+  const $pVal = document.getElementById('pVal');
+  const $file = document.getElementById('file');
+  const $sndStart = document.getElementById('sndStart');
+  const $sndFinish = document.getElementById('sndFinish');
 
-  // ------- 유틸 -------
-  const clamp=(v,min,max)=> Math.max(min, Math.min(max, v));
-  const toast=(msg)=>{ DOM.toast.textContent=msg; DOM.toast.style.display='block'; setTimeout(()=> DOM.toast.style.display='none', 2200); };
-  function randomSample(arr,n){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]} return a.slice(0,n); }
+  // ===== Utils =====
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  const sample=(arr,n)=>{const a=[...arr];for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];}return a.slice(0,n)}
+  const play=(audio)=>{ try{ const a=audio.cloneNode(); a.volume=0.9; a.play(); }catch(e){} } // 빠르게 연속 재생 가능하게 복제
 
-  // ------- 초기화 -------
-  function makeRacers(n){
-    const emojis = randomSample(DEFAULT_EMOJIS, n);
-    racers = Array.from({length:n}, (_,i)=>({
-      id:i, emoji:emojis[i], name:`참가자 ${i+1}`, x:0, avatarSrc:null, finishedAt:null, place:null
-    }));
+  // ===== Renders =====
+  function makeRacers(){
+    const pick = sample(EMOJIS, Math.min(players, EMOJIS.length));
+    racers = Array.from({length:players}, (_,i)=>({id:i, emoji: pick[i % pick.length], x:0, avatarSrc:null, finishedAt:null, place:null}));
   }
 
-  function render(){
-    DOM.lanes.innerHTML=''; distances.clear();
-    DOM.lanes.style.gridTemplateRows = `repeat(${racers.length}, 1fr)`;
-    racers.forEach((r,i)=>{
+  function renderStack(){
+    $stack.innerHTML='';
+    for(const r of racers){
       const lane = document.createElement('div'); lane.className='lane';
-      const runway = document.createElement('div'); runway.className='runway';
-      const flag = document.createElement('div'); flag.className='flag'; flag.textContent='🏁 결승선';
-
-      const runner = document.createElement('div'); runner.className='runner'; runner.dataset.idx = i;
-      runner.title = '클릭하여 사진 넣기';
-      runner.addEventListener('click',()=>{ activeAvatarIdx = i; DOM.file.click(); });
-      if(r.avatarSrc){ const img=document.createElement('img'); img.src=r.avatarSrc; runner.appendChild(img); }
-      else { runner.textContent=r.emoji; }
-
-      const name = document.createElement('div'); name.className='name'; name.contentEditable=true; name.spellcheck=false; name.textContent=r.name;
-      name.addEventListener('blur',()=> r.name = name.textContent.trim() || r.name);
-      name.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); name.blur(); }});
-
-      runway.appendChild(flag); runway.appendChild(runner); runway.appendChild(name);
-      lane.appendChild(runway);
-      DOM.lanes.appendChild(lane);
-
-      // 거리 측정: 러너가 갈 수 있는 거리(픽셀)
-      // 약간의 지연 후 측정하여 레이아웃이 안정된 뒤 값 확보
+      const runner = document.createElement('div'); runner.className='runner'; runner.dataset.idx=r.id;
+      runner.addEventListener('click',()=>{activeIdx=r.id; $file.click();});
+      if(r.avatarSrc){ const img=document.createElement('img'); img.src=r.avatarSrc; runner.appendChild(img)} else runner.textContent=r.emoji;
+      const flag = document.createElement('div'); flag.className='flag'; flag.textContent='🏁';
+      lane.appendChild(runner); lane.appendChild(flag); $stack.appendChild(lane);
+      // set initial position
       requestAnimationFrame(()=>{
-        const w = runway.clientWidth; const rw = runner.clientWidth; const pad = 6; // runner top padding 고려
-        distances.set(r.id, Math.max(0, w - rw - 8));
-        // 초기 위치 반영
-        runner.style.transform = `translateX(${r.x * distances.get(r.id)}px)`;
+        const dist = lane.clientWidth - runner.clientWidth - 24; // padding
+        runner.style.transform = `translate(${r.x*dist}px,-50%)`;
       });
-    });
-    updateBoard();
-  }
-
-  function updateBoard(){
-    DOM.board.innerHTML = '';
-    const sorted = racers.filter(r=> r.place!=null).sort((a,b)=> a.place-b.place);
-    sorted.forEach(r=>{
-      const li=document.createElement('li'); li.textContent = `${r.place}등 · ${r.name}`; DOM.board.appendChild(li);
-    });
+    }
   }
 
   function reset(){
     running=false; cancelAnimationFrame(raf);
-    racers.forEach(r=>{ r.x=0; r.finishedAt=null; r.place=null; });
-    DOM.start.disabled=false; DOM.reset.disabled=true;
-    render();
+    racers.forEach(r=>{r.x=0; r.finishedAt=null; r.place=null;});
+    nextPlace=1; $start.textContent='Start'; $start.disabled=false; renderStack();
   }
 
   function start(){
-    if(running) return; running=true;
-    DOM.start.disabled=true; DOM.reset.disabled=false;
-    startTime = performance.now(); durations.clear();
-    let nextPlace = 1;
+    if(running) return; running=true; $start.disabled=true; startTime=performance.now(); durations.clear(); nextPlace=1;
 
-    // 각 주자 목표시간 8~14초 + 약간의 지터
-    racers.forEach(r=>{
-      const base = 8000 + Math.random()*6000; // 8~14s
-      const jitter = (Math.random()-.5)*1000; // ±0.5s
-      durations.set(r.id, base + jitter);
-    });
+    // 🔊 출발 사운드 (사용자 클릭 제스처 직후라 브라우저 정책 허용)
+    $sndStart.currentTime = 0; play($sndStart);
+
+    // per-racer finish time with jitter around totalSec
+    racers.forEach(r=>{ const base=totalSec*1000; const jitter=(Math.random()-.5)*base*0.5; durations.set(r.id, base + jitter); });
 
     function tick(now){
-      const elapsed = now - startTime;
-      let allFinished = true;
-
-      document.querySelectorAll('.runner').forEach((node)=>{
-        const idx = +node.dataset.idx; const r = racers[idx];
+      let allFinished=true;
+      document.querySelectorAll('.lane').forEach((lane,i)=>{
+        const r=racers[i]; const runner=lane.querySelector('.runner');
+        const dist = lane.clientWidth - runner.clientWidth - 24;
         if(r.finishedAt==null){
-          const dur = durations.get(r.id);
-          // 기본 전진률 + 살짝 가속/감속 + 난수 가속
-          const baseP = elapsed / dur; // 0..1
-          const wobble = 0.02*Math.sin((elapsed/220)+(idx*0.9));
-          const sprint = 0.01*(Math.random()-0.5);
-          r.x = clamp(baseP + wobble + sprint, 0, 1);
-          if(r.x >= 1){ r.x=1; r.finishedAt = now; r.place = nextPlace++; showPlaceBadge(node, r.place); updateBoard(); }
+          const elapsed=now-startTime; const dur=durations.get(r.id);
+          const baseP=elapsed/dur; const wobble=0.02*Math.sin((elapsed/220)+(i*0.9)); const sprint=0.01*(Math.random()-.5);
+          r.x=clamp(baseP+wobble+sprint,0,1);
+          if(r.x>=1){
+            r.x=1; r.finishedAt=now; r.place=nextPlace++;
+            const badge=document.createElement('div'); badge.className='place'; badge.textContent=r.place; runner.appendChild(badge); runner.style.filter='brightness(1.1)';
+            // 🔊 각 주자 골인 사운드
+            play($sndFinish);
+          }
         }
-        const dist = distances.get(r.id) ?? 0;
-        node.style.transform = `translateX(${r.x * dist}px)`;
+        runner.style.transform=`translate(${r.x*dist}px,-50%)`;
         if(r.finishedAt==null) allFinished=false;
       });
-
-      if(allFinished){
-        running=false; toast(`🎉 모든 주자 골인! 1등: ${racers.find(r=>r.place===1)?.name}`);
-        return;
-      }
-      raf = requestAnimationFrame(tick);
+      if(allFinished){ running=false; $start.textContent='Reset'; $start.disabled=false; return; }
+      raf=requestAnimationFrame(tick);
     }
-    raf = requestAnimationFrame(tick);
+    raf=requestAnimationFrame(tick);
   }
 
-  function showPlaceBadge(runnerNode, place){
-    const badge = document.createElement('div'); badge.className='place'; badge.textContent=place; runnerNode.appendChild(badge);
-    runnerNode.style.filter = 'brightness(1.15)';
-  }
+  // ===== Events =====
+  $start.addEventListener('click',()=>{ if(running) return; if(racers.every(r=>r.finishedAt!=null)) { reset(); } else { start(); } });
+  $tMinus.addEventListener('click',()=>{ totalSec=clamp(totalSec-1,6,20); $tVal.textContent=totalSec+'s'; });
+  $tPlus.addEventListener('click',()=>{ totalSec=clamp(totalSec+1,6,20); $tVal.textContent=totalSec+'s'; });
+  $pMinus.addEventListener('click',()=>{ players=clamp(players-1,2,9); $pVal.textContent=players+'p'; makeRacers(); reset(); });
+  $pPlus.addEventListener('click',()=>{ players=clamp(players+1,2,9); $pVal.textContent=players+'p'; makeRacers(); reset(); });
 
-  // 파일 업로드 (로컬 프리뷰)
-  function bindFile(){
-    DOM.file.addEventListener('change', (e)=>{
-      const file = e.target.files?.[0]; if(!file || activeAvatarIdx==null) return;
-      const reader = new FileReader();
-      reader.onload = ()=>{ racers[activeAvatarIdx].avatarSrc = reader.result; render(); activeAvatarIdx = null; DOM.file.value=''; };
-      reader.readAsDataURL(file);
-    });
-  }
+  $file.addEventListener('change', (e)=>{
+    const f=e.target.files?.[0]; if(!f || activeIdx==null) return; const reader=new FileReader();
+    reader.onload=()=>{ const r=racers.find(x=>x.id===activeIdx); r.avatarSrc=reader.result; activeIdx=null; $file.value=''; renderStack(); };
+    reader.readAsDataURL(f);
+  });
 
-  function init(){
-    DOM.lanes = document.getElementById('lanes');
-    DOM.count = document.getElementById('count');
-    DOM.start = document.getElementById('start');
-    DOM.reset = document.getElementById('reset');
-    DOM.shuffle = document.getElementById('shuffle');
-    DOM.file = document.getElementById('file');
-    DOM.toast = document.getElementById('toast');
-    DOM.board = document.getElementById('board');
-
-    DOM.count.addEventListener('change', ()=>{ makeRacers(parseInt(DOM.count.value,10)); reset(); });
-    DOM.start.addEventListener('click', start);
-    DOM.reset.addEventListener('click', reset);
-    DOM.shuffle.addEventListener('click', ()=>{ racers.forEach(r=> r.emoji = DEFAULT_EMOJIS[(Math.random()*DEFAULT_EMOJIS.length)|0]); render(); });
-    bindFile();
-
-    makeRacers(parseInt(DOM.count.value,10));
-    render();
-  }
-
-  init();
+  // ===== Boot =====
+  makeRacers(); renderStack();
   </script>
 </body>
 </html>
