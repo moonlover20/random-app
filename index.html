@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>동물달리기 – 커피내기</title>
+  <title>동물달리기 – 커피내기 (트랙 이동형)</title>
   <style>
     :root{
       --bg:#0b1020; --panel:#111735; --ink:#eaf2ff; --muted:#9fb2d9; --brand:#5aa1ff; --accent:#8bffb0;
@@ -20,25 +20,29 @@
 
     .track{background:linear-gradient(180deg, #10162f, #0d1430);border:1px solid #2a3a7a;border-radius:16px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
     .lanes{display:grid;gap:10px}
-    .lane{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center;background:#0f1636;border:1px solid #22306b;border-radius:14px;padding:10px;position:relative}
-    .avatar{width:52px;height:52px;border-radius:50%;background:#0d1230;border:2px solid #2c3f88;display:grid;place-items:center;font-size:28px;cursor:pointer;user-select:none;overflow:hidden}
-    .avatar img{width:100%;height:100%;object-fit:cover}
-    .name{font-size:12px;color:var(--muted);text-align:center;margin-top:6px}
-    .progress{height:18px;background:#0a0f28;border:1px solid #202d61;border-radius:999px;overflow:hidden}
-    .bar{height:100%;width:0%;background:linear-gradient(90deg, var(--brand), var(--accent));box-shadow:0 0 14px rgba(90,161,255,.6) inset;transition:width .12s ease}
+    .lane{background:#0f1636;border:1px solid #22306b;border-radius:14px;padding:10px;position:relative}
+    .runway{position:relative;height:64px;border-radius:12px;background:repeating-linear-gradient(90deg,#121b46 0 14px,#0f173f 14px 28px);border:1px solid #23306a;overflow:hidden}
+    .runner{position:absolute;top:6px;left:0;width:52px;height:52px;border-radius:50%;background:#0d1230;border:2px solid #2c3f88;display:grid;place-items:center;font-size:28px;user-select:none;overflow:hidden;transition:filter .2s}
+    .runner img{width:100%;height:100%;object-fit:cover}
+    .name{position:absolute;top:6px;left:58px;color:#bcd1ff;font-size:12px;opacity:.9;user-select:none}
+    .flag{position:absolute;right:4px;top:6px;background:#1c2c64;border:1px solid #3550b9;color:#e7f0ff;font-size:11px;padding:5px 8px;border-radius:8px;z-index:1}
+
+    .place{position:absolute;top:-10px;left:-10px;background:#ffd166;color:#1a1a1a;border:2px solid #e0a300;border-radius:999px;width:26px;height:26px;display:grid;place-items:center;font-weight:800;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.35);}
 
     footer{margin-top:14px;color:var(--muted);font-size:13px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:10px}
     .card{background:#0f1738;border:1px solid #23306a;border-radius:12px;padding:10px}
     .hint{color:#bcd1ff;font-size:12px}
     .toast{position:fixed;inset:auto 12px 12px auto;background:#1a275f;border:1px solid #2e4bb5;color:#fff;padding:12px 14px;border-radius:12px;font-weight:700;box-shadow:0 8px 30px rgba(0,0,0,.4);display:none}
-    .flag{position:absolute;right:10px;top:10px;background:#1c2c64;border:1px solid #3550b9;color:#e7f0ff;font-size:11px;padding:5px 8px;border-radius:8px}
+
+    .board{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+    .board li{background:#122062;border:1px solid #2946a8;border-radius:10px;padding:6px 10px;font-size:12px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>🐾 동물달리기 – 커피내기</h1>
+      <h1>🐾 동물달리기 – 커피내기 (트랙 이동형)</h1>
       <div class="controls">
         <label>인원
           <select id="count" class="select" aria-label="참가자 수">
@@ -59,18 +63,17 @@
       <div class="grid">
         <div class="card">
           <strong>사용법</strong>
-          <div class="hint">아바타를 클릭해 사진을 넣을 수 있어요. 시작을 누르면 6–12초 사이 랜덤 속도로 질주합니다. 1등이 뜨면 자동 정지!</div>
+          <div class="hint">아바타(원형)를 클릭해 사진을 넣고, <b>달리는 말풍선</b>처럼 캐릭터가 오른쪽 결승선까지 직접 이동합니다. 모든 주자가 골인할 때까지 진행돼요.</div>
         </div>
         <div class="card">
-          <strong>팁</strong>
-          <div class="hint">참가자 이름은 아바타 아래 텍스트를 더블클릭해 수정하세요. (엔터로 확정)</div>
+          <strong>현재 순위</strong>
+          <ul id="board" class="board"></ul>
         </div>
       </div>
     </footer>
   </div>
 
   <div id="toast" class="toast"></div>
-
   <input id="file" type="file" accept="image/*" hidden />
 
   <script>
@@ -78,156 +81,155 @@
   const DEFAULT_EMOJIS = ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵'];
 
   // ------- 상태 -------
-  let racers = []; // { id, emoji, name, progress, avatarSrc }
+  let racers = []; // { id, emoji, name, x(0..1), avatarSrc, finishedAt, place }
   let running = false;
-  let raf; // animation frame id
-  let startTime, durations = new Map(); // ms per racer
-  let activeAvatarIdx = null; // for file input
+  let raf;
+  let startTime;
+  const durations = new Map(); // 예상 완주시간(ms)
+  const distances = new Map(); // 트랙 픽셀 길이(러너가 이동 가능한 실제 거리)
+  const DOM = { lanes: null, count: null, start: null, reset: null, shuffle: null, file: null, toast: null, board: null };
+  let activeAvatarIdx = null;
 
-  // ------- DOM -------
-  const $lanes = document.getElementById('lanes');
-  const $count = document.getElementById('count');
-  const $start = document.getElementById('start');
-  const $reset = document.getElementById('reset');
-  const $shuffle = document.getElementById('shuffle');
-  const $file = document.getElementById('file');
-  const $toast = document.getElementById('toast');
+  // ------- 유틸 -------
+  const clamp=(v,min,max)=> Math.max(min, Math.min(max, v));
+  const toast=(msg)=>{ DOM.toast.textContent=msg; DOM.toast.style.display='block'; setTimeout(()=> DOM.toast.style.display='none', 2200); };
+  function randomSample(arr,n){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]} return a.slice(0,n); }
 
-  function toast(msg){
-    $toast.textContent = msg; $toast.style.display = 'block';
-    setTimeout(()=> $toast.style.display='none', 2200);
-  }
-
-  function randomSample(arr,n){
-    const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]}
-    return a.slice(0,n);
-  }
-
+  // ------- 초기화 -------
   function makeRacers(n){
     const emojis = randomSample(DEFAULT_EMOJIS, n);
     racers = Array.from({length:n}, (_,i)=>({
-      id: i,
-      emoji: emojis[i],
-      name: `참가자 ${i+1}`,
-      progress: 0,
-      avatarSrc: null
+      id:i, emoji:emojis[i], name:`참가자 ${i+1}`, x:0, avatarSrc:null, finishedAt:null, place:null
     }));
   }
 
   function render(){
-    $lanes.innerHTML = '';
-    $lanes.style.gridTemplateRows = `repeat(${racers.length}, 1fr)`;
+    DOM.lanes.innerHTML=''; distances.clear();
+    DOM.lanes.style.gridTemplateRows = `repeat(${racers.length}, 1fr)`;
     racers.forEach((r,i)=>{
-      const lane = document.createElement('div');
-      lane.className = 'lane';
+      const lane = document.createElement('div'); lane.className='lane';
+      const runway = document.createElement('div'); runway.className='runway';
+      const flag = document.createElement('div'); flag.className='flag'; flag.textContent='🏁 결승선';
 
-      const left = document.createElement('div');
-      left.style.textAlign = 'center';
+      const runner = document.createElement('div'); runner.className='runner'; runner.dataset.idx = i;
+      runner.title = '클릭하여 사진 넣기';
+      runner.addEventListener('click',()=>{ activeAvatarIdx = i; DOM.file.click(); });
+      if(r.avatarSrc){ const img=document.createElement('img'); img.src=r.avatarSrc; runner.appendChild(img); }
+      else { runner.textContent=r.emoji; }
 
-      const avatar = document.createElement('div');
-      avatar.className = 'avatar';
-      avatar.title = '클릭하여 사진 넣기';
-      avatar.addEventListener('click',()=>{ activeAvatarIdx = i; $file.click(); });
-
-      if(r.avatarSrc){
-        const img = document.createElement('img'); img.src = r.avatarSrc; avatar.appendChild(img);
-      } else {
-        avatar.textContent = r.emoji;
-      }
-
-      const name = document.createElement('div');
-      name.className = 'name';
-      name.contentEditable = true; name.spellcheck = false; name.textContent = r.name;
+      const name = document.createElement('div'); name.className='name'; name.contentEditable=true; name.spellcheck=false; name.textContent=r.name;
       name.addEventListener('blur',()=> r.name = name.textContent.trim() || r.name);
       name.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); name.blur(); }});
 
-      left.appendChild(avatar);
-      left.appendChild(name);
+      runway.appendChild(flag); runway.appendChild(runner); runway.appendChild(name);
+      lane.appendChild(runway);
+      DOM.lanes.appendChild(lane);
 
-      const progress = document.createElement('div');
-      progress.className = 'progress';
-      const bar = document.createElement('div'); bar.className = 'bar'; bar.style.width = r.progress+'%';
-      progress.appendChild(bar);
+      // 거리 측정: 러너가 갈 수 있는 거리(픽셀)
+      // 약간의 지연 후 측정하여 레이아웃이 안정된 뒤 값 확보
+      requestAnimationFrame(()=>{
+        const w = runway.clientWidth; const rw = runner.clientWidth; const pad = 6; // runner top padding 고려
+        distances.set(r.id, Math.max(0, w - rw - 8));
+        // 초기 위치 반영
+        runner.style.transform = `translateX(${r.x * distances.get(r.id)}px)`;
+      });
+    });
+    updateBoard();
+  }
 
-      const flag = document.createElement('div'); flag.className='flag'; flag.textContent = '🏁 결승선';
-
-      lane.appendChild(left);
-      lane.appendChild(progress);
-      lane.appendChild(flag);
-      $lanes.appendChild(lane);
+  function updateBoard(){
+    DOM.board.innerHTML = '';
+    const sorted = racers.filter(r=> r.place!=null).sort((a,b)=> a.place-b.place);
+    sorted.forEach(r=>{
+      const li=document.createElement('li'); li.textContent = `${r.place}등 · ${r.name}`; DOM.board.appendChild(li);
     });
   }
 
   function reset(){
-    running = false; cancelAnimationFrame(raf);
-    racers.forEach(r=> r.progress = 0);
-    $start.disabled = false; $reset.disabled = true;
+    running=false; cancelAnimationFrame(raf);
+    racers.forEach(r=>{ r.x=0; r.finishedAt=null; r.place=null; });
+    DOM.start.disabled=false; DOM.reset.disabled=true;
     render();
   }
 
   function start(){
-    if(running) return; running = true;
-    $start.disabled = true; $reset.disabled = false;
-    startTime = performance.now();
-    durations.clear();
-    // 각 주자 완주 시간: 6~12초 랜덤 (조금의 가중치)
+    if(running) return; running=true;
+    DOM.start.disabled=true; DOM.reset.disabled=false;
+    startTime = performance.now(); durations.clear();
+    let nextPlace = 1;
+
+    // 각 주자 목표시간 8~14초 + 약간의 지터
     racers.forEach(r=>{
-      const base = 6000 + Math.random()*6000; // 6~12s
-      const jitter = (Math.random()-.5)*800; // ±0.4s
+      const base = 8000 + Math.random()*6000; // 8~14s
+      const jitter = (Math.random()-.5)*1000; // ±0.5s
       durations.set(r.id, base + jitter);
     });
 
     function tick(now){
       const elapsed = now - startTime;
-      let finished = false;
-      racers.forEach(r=>{
-        const d = durations.get(r.id);
-        const p = Math.min(100, (elapsed/d)*100);
-        // 살짝 흔들리는 가속/감속
-        const wobble = 0.5*Math.sin((elapsed/250)+(r.id*0.7));
-        r.progress = Math.max(0, Math.min(100, p + wobble));
-        if(r.progress>=100) finished = true;
+      let allFinished = true;
+
+      document.querySelectorAll('.runner').forEach((node)=>{
+        const idx = +node.dataset.idx; const r = racers[idx];
+        if(r.finishedAt==null){
+          const dur = durations.get(r.id);
+          // 기본 전진률 + 살짝 가속/감속 + 난수 가속
+          const baseP = elapsed / dur; // 0..1
+          const wobble = 0.02*Math.sin((elapsed/220)+(idx*0.9));
+          const sprint = 0.01*(Math.random()-0.5);
+          r.x = clamp(baseP + wobble + sprint, 0, 1);
+          if(r.x >= 1){ r.x=1; r.finishedAt = now; r.place = nextPlace++; showPlaceBadge(node, r.place); updateBoard(); }
+        }
+        const dist = distances.get(r.id) ?? 0;
+        node.style.transform = `translateX(${r.x * dist}px)`;
+        if(r.finishedAt==null) allFinished=false;
       });
-      renderBars();
-      if(finished){ running = false; announceWinner(); return; }
+
+      if(allFinished){
+        running=false; toast(`🎉 모든 주자 골인! 1등: ${racers.find(r=>r.place===1)?.name}`);
+        return;
+      }
       raf = requestAnimationFrame(tick);
     }
     raf = requestAnimationFrame(tick);
   }
 
-  function renderBars(){
-    document.querySelectorAll('.lane').forEach((lane,idx)=>{
-      const bar = lane.querySelector('.bar');
-      bar.style.width = racers[idx].progress + '%';
+  function showPlaceBadge(runnerNode, place){
+    const badge = document.createElement('div'); badge.className='place'; badge.textContent=place; runnerNode.appendChild(badge);
+    runnerNode.style.filter = 'brightness(1.15)';
+  }
+
+  // 파일 업로드 (로컬 프리뷰)
+  function bindFile(){
+    DOM.file.addEventListener('change', (e)=>{
+      const file = e.target.files?.[0]; if(!file || activeAvatarIdx==null) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{ racers[activeAvatarIdx].avatarSrc = reader.result; render(); activeAvatarIdx = null; DOM.file.value=''; };
+      reader.readAsDataURL(file);
     });
   }
 
-  function announceWinner(){
-    // 동률이 생기면 가장 빨리 100에 도달한 인덱스를 우선
-    const max = Math.max(...racers.map(r=> r.progress));
-    const candidates = racers.map((r,i)=>({i,p:r.progress})).filter(o=> o.p>=max-0.001);
-    const winnerIndex = candidates[0].i;
-    const w = racers[winnerIndex];
-    toast(`🏆 1등: ${w.name}! 커피 면제!`);
+  function init(){
+    DOM.lanes = document.getElementById('lanes');
+    DOM.count = document.getElementById('count');
+    DOM.start = document.getElementById('start');
+    DOM.reset = document.getElementById('reset');
+    DOM.shuffle = document.getElementById('shuffle');
+    DOM.file = document.getElementById('file');
+    DOM.toast = document.getElementById('toast');
+    DOM.board = document.getElementById('board');
+
+    DOM.count.addEventListener('change', ()=>{ makeRacers(parseInt(DOM.count.value,10)); reset(); });
+    DOM.start.addEventListener('click', start);
+    DOM.reset.addEventListener('click', reset);
+    DOM.shuffle.addEventListener('click', ()=>{ racers.forEach(r=> r.emoji = DEFAULT_EMOJIS[(Math.random()*DEFAULT_EMOJIS.length)|0]); render(); });
+    bindFile();
+
+    makeRacers(parseInt(DOM.count.value,10));
+    render();
   }
 
-  // 파일 업로드 처리 (로컬 미리보기, 서버 업로드 없이 동작)
-  $file.addEventListener('change', (e)=>{
-    const file = e.target.files?.[0]; if(!file || activeAvatarIdx==null) return;
-    const reader = new FileReader();
-    reader.onload = ()=>{ racers[activeAvatarIdx].avatarSrc = reader.result; render(); activeAvatarIdx = null; $file.value=''; };
-    reader.readAsDataURL(file);
-  });
-
-  // 이벤트 바인딩
-  $count.addEventListener('change', ()=>{ makeRacers(parseInt($count.value,10)); reset(); });
-  $start.addEventListener('click', start);
-  $reset.addEventListener('click', reset);
-  $shuffle.addEventListener('click', ()=>{ racers.forEach((r,i)=> r.emoji = DEFAULT_EMOJIS[(Math.random()*DEFAULT_EMOJIS.length)|0]); render(); });
-
-  // 초기화
-  makeRacers(parseInt($count.value,10));
-  render();
+  init();
   </script>
 </body>
 </html>
